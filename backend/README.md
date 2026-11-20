@@ -39,6 +39,16 @@ Uploads are saved below `UPLOAD_DIR`. Each knowledge base has a FAISS index at `
 
 Scanned PDF pages use local Tesseract OCR, with OpenAI vision OCR as a fallback. Set `OPENAI_API_KEY` for embeddings and the default answer model, or configure `LLM_PROVIDER=groq` and `GROQ_API_KEY`. When retrieval produces no relevant chunks, chat returns `Information not found in the provided documents.` without calling an LLM.
 
+## Document processing and deployment
+
+When `CELERY_BROKER_URL` is configured, uploads and reprocessing are dispatched
+to the Celery worker. Without a broker, the API schedules processing as an
+in-process background task so single-instance deployments can still index
+documents without a local Redis service. In-process tasks can be interrupted by
+restarts and are not a durable production queue. Multi-instance deployments need
+a reachable broker, a running worker, and shared persistent document and index
+storage; a separate worker cannot use the API instance's local filesystem.
+
 ## Vercel deployment
 
 Keep the two-project monorepo arrangement: set the frontend Vercel project root to `frontend` and the API project root to `backend`. Configure `VITE_API_BASE_URL` on the frontend and `DATABASE_URL`, `JWT_SECRET_KEY`, AI provider credentials, and `CORS_ORIGINS` on the API project. Run Alembic migrations against the hosted MySQL database as a deployment step before serving traffic.

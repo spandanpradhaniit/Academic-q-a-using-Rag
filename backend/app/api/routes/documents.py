@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import logging
 from pathlib import Path
 from uuid import uuid4
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select, or_
 from sqlalchemy.orm import Session
 from app.api.dependencies import CurrentUser
@@ -18,7 +18,32 @@ router=APIRouter(prefix="/documents",tags=["documents"])
 logger = logging.getLogger(__name__)
 
 
-def _enqueue_processing(document_id: str, processing_job_id: str, db: Session) -> None:
+def _process_document_inline(document_id: str, processing_job_id: str) -> None:
+    from app.services.documents import process_document
+
+    process_document(document_id, processing_job_id)
+
+
+def _enqueue_processing(
+    document_id: str,
+    processing_job_id: str,
+    db: Session,
+    background_tasks: BackgroundTasks,
+) -> None:
+    settings = get_settings()
+    if not settings.celery_broker_url.strip():
+        logger.info(
+            "Processing document %s in the API background task; "
+            "CELERY_BROKER_URL is not configured",
+            document_id,
+        )
+        background_tasks.add_task(
+            _process_document_inline,
+            document_id,
+            processing_job_id,
+        )
+        return
+
     try:
         from app.workers.tasks import process_document_task
 
@@ -45,7 +70,7 @@ def _enqueue_processing(document_id: str, processing_job_id: str, db: Session) -
 def serialize(row,subject="Uncategorized"):
     return {"document_id":row.id,"id":row.id,"name":row.title,"title":row.title,"file_name":row.file_name,"subject":subject,"subject_id":row.subject_id,"file_size":row.file_size,"size":f"{row.file_size/1048576:.1f} MB","date":row.created_at.strftime("%b %d, %Y"),"type":"PDF document","chunks":row.chunk_count,"pages":row.page_count,"status":row.status.capitalize(),"processing_error":row.processing_error}
 @router.post("/upload",status_code=status.HTTP_202_ACCEPTED,summary="Upload and process a PDF")
-def upload_document(user:CurrentUser,db:Session=Depends(get_db),file:UploadFile=File(...),subject_id:str|None=None):
+def upload_document(user:CurrentUser,background_tasks:BackgroundTasks,db:Session=Depends(get_db),file:UploadFile=File(...),subject_id:str|None=None):
     settings=get_settings()
     filename=sanitize_filename(Path(file.filename or "document.pdf").name)
     if Path(filename).suffix.lower()!=".pdf" or file.content_type not in {"application/pdf","application/octet-stream"}: raise HTTPException(415,"Only PDF files are supported")
@@ -65,7 +90,7 @@ def upload_document(user:CurrentUser,db:Session=Depends(get_db),file:UploadFile=
     row=Document(id=doc_id,user_id=user.id,subject_id=subject_id,knowledge_base_id=kb.id,title=Path(filename).stem[:200],file_name=filename,file_path=storage_path,file_size=len(data),file_type="application/pdf",file_hash=digest,status="queued")
     job_id=str(uuid4())
     db.add(row); db.add(ProcessingJob(id=job_id,document_id=doc_id,status="queued")); db.commit(); db.refresh(row)
-    _enqueue_processing(doc_id,job_id,db)
+    _enqueue_processing(doc_id,job_id,db,background_tasks)
     return serialize(row,subject.name if subject else "Uncategorized")
 @router.get("",summary="List and filter the user's documents")
 def list_documents(user:CurrentUser,db:Session=Depends(get_db),search:str="",subject_id:str|None=None,status_filter:str|None=Query(None,alias="status"),page:int=Query(1,ge=1),limit:int=Query(20,ge=1,le=100),page_size:int|None=None):
@@ -98,12 +123,12 @@ def get_document_file(document_id:str,user:CurrentUser,db:Session=Depends(get_db
     except FileNotFoundError as exc:
         raise HTTPException(404,"Stored document file not found") from exc
 @router.post("/{document_id}/reprocess",status_code=202,summary="Reprocess a PDF")
-def reprocess(document_id:str,user:CurrentUser,db:Session=Depends(get_db)):
+def reprocess(document_id:str,user:CurrentUser,background_tasks:BackgroundTasks,db:Session=Depends(get_db)):
     d=db.scalar(select(Document).where(Document.id==document_id,Document.user_id==user.id))
     if not d:raise HTTPException(404,"Document not found")
     job_id=str(uuid4())
     d.status="queued"; d.processing_error=None; d.updated_at=datetime.now(timezone.utc); db.add(ProcessingJob(id=job_id,document_id=d.id,status="queued")); db.commit()
-    _enqueue_processing(d.id,job_id,db)
+    _enqueue_processing(d.id,job_id,db,background_tasks)
     return {"success":True,"status":"processing"}
 @router.delete("/{document_id}",status_code=204,summary="Delete a document")
 def delete_document(document_id:str,user:CurrentUser,db:Session=Depends(get_db)):

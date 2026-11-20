@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     s3_access_key_id: str = ""
     s3_secret_access_key: str = ""
-    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_broker_url: str = ""
     rate_limit_enabled: bool = False
     llama_model: str = "openai/gpt-oss-120b"
     embedding_model: str = "text-embedding-3-small"

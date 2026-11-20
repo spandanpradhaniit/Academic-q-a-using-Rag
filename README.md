@@ -1,15 +1,13 @@
 # 🎓 Scholar AI: Academic Question Answering System Using Hybrid RAG
 
-[![CI Pipeline](https://github.com/spandanpradhaniit/Aaogya_jal/actions/workflows/ci.yml/badge.svg)](https://github.com)
+[![CI Pipeline](https://github.com/spandanpradhaniit/Academic-q-a-using-Rag/actions/workflows/ci.yml/badge.svg)](https://github.com/spandanpradhaniit/Academic-q-a-using-Rag/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg)](https://fastapi.tiangolo.com)
 [![React 19](https://img.shields.io/badge/React-19.0-61DAFB.svg)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6.svg)](https://www.typescriptlang.org)
-[![Tests: 100% Passing](https://img.shields.io/badge/Tests-73%20Passed-brightgreen.svg)]()
-[![Accessibility: WCAG 2.1](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-blueviolet.svg)]()
 
-> **Production-grade academic research assistant grounded strictly in verified course materials, lecture notes, and research papers using hybrid sparse-dense retrieval (BM25 + FAISS / Qdrant) with Reciprocal Rank Fusion (RRF), anti-hallucination verification, and exact page citations.**
+> **Academic research assistant using hybrid sparse-dense retrieval (BM25 + FAISS / Qdrant), Reciprocal Rank Fusion (RRF), retrieval relevance checks, and page-level citations.**
 
 ---
 
@@ -47,14 +45,14 @@ flowchart TD
 ## ✨ Features
 
 - **Hybrid Retrieval (BM25 + FAISS/Qdrant):** Combines exact keyword matching with semantic vector embeddings for highest academic precision.
-- **Strict Evidence Guardrails:** Guarantees no hallucinated answers. If retrieved context lacks evidence, the system explicitly reports *"Information not found in the provided documents."*
-- **Exact Page-Level Citations:** Every claim is backed by `[Source N]` tags referencing document title, page number, and snippet.
-- **Enterprise Security Hardening:**
+- **Evidence safeguards:** The application checks retrieval relevance and abstains when no relevant material is found. Answer faithfulness should be measured on a reviewed evaluation set; no generative system can guarantee zero hallucinations.
+- **Page-level citations:** Generated answers use `[Source N]` citations for retrieved passages, and citation validation removes references to sources that were not retrieved.
+- **Security controls:**
   - Automated security headers middleware (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy`, `Strict-Transport-Security`, `Permissions-Policy`).
   - Strict input sanitization against XSS, path traversal, and HTML injection.
-  - Redis-backed distributed rate limiting.
+  - Redis-backed distributed rate limiting when enabled and configured.
   - Zero sensitive secrets in version control.
-- **Accessible & Responsive UI (WCAG 2.1 AA):** Complete ARIA labels, semantic landmark regions, keyboard shortcuts, screen reader announcements (`aria-live="polite"`), and dark/light modes.
+- **Accessible & Responsive UI:** Semantic landmarks, accessible labels, keyboard navigation, screen reader announcements (`aria-live="polite"`), and dark/light modes. Validate the deployed UI against your target WCAG criteria before claiming conformance.
 - **Multi-Database Support:** Seamlessly runs on **Supabase (PostgreSQL)**, **Render PostgreSQL**, **MySQL**, or local **SQLite**.
 
 ---
@@ -108,10 +106,10 @@ npm run dev
 
 ## 🧪 Comprehensive Automated Testing
 
-The codebase includes an extensive automated test suite with **100% passing tests** across both frontend and backend.
+The repository includes backend and frontend automated tests. Run the checks below against the current checkout; passing unit tests do not by themselves establish RAG answer quality or accessibility conformance.
 
 ```bash
-# Run all Backend Pytest tests (65 unit and integration tests)
+# Run all Backend Pytest tests
 cd backend
 .venv/bin/pytest -v
 
