@@ -1,0 +1,65 @@
+# Render deployment configuration
+# https://render.com/docs/yaml-spec
+
+services:
+  - type: web
+    name: academic-qa-api
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+      alembic upgrade head
+    startCommand: |
+      cd backend
+      uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 60
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: CORS_ORIGINS
+        sync: false
+      - key: UPLOAD_DIR
+        value: /tmp/academic-qa/uploads
+      - key: FAISS_DIR
+        value: /tmp/academic-qa/faiss
+      - key: BM25_DIR
+        value: /tmp/academic-qa/bm25
+      - key: MAX_FILE_SIZE_MB
+        value: 20
+      - key: CHUNK_SIZE
+        value: 800
+      - key: CHUNK_OVERLAP
+        value: 150
+      - key: TOP_K_SEMANTIC
+        value: 10
+      - key: TOP_K_KEYWORD
+        value: 10
+      - key: TOP_K_FINAL
+        value: 5
+      - key: SEMANTIC_WEIGHT
+        value: 0.7
+      - key: KEYWORD_WEIGHT
+        value: 0.3
+      - key: APP_DEBUG
+        value: false
+      - key: PYTHON_VERSION
+        value: 3.11.11
+    healthCheckPath: /api/health
+    autoDeploy: true
