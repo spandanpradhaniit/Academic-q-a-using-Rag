@@ -1,8 +1,11 @@
 """Tests for security headers middleware."""
 
+from types import SimpleNamespace
+
 from fastapi.testclient import TestClient
 
 from app import main
+from app.core import rate_limit
 
 
 def test_responses_include_security_headers():
@@ -34,3 +37,27 @@ def test_cors_preflight_allows_configured_origin(monkeypatch):
         # We just verify CORS itself works.
         assert response.status_code == 200
         assert "access-control-allow-origin" in response.headers
+
+
+def test_cors_headers_are_added_to_rate_limit_responses(monkeypatch):
+    class RateLimitedRedis:
+        async def eval(self, *args):
+            return 6, 60
+
+    origin = main.settings.cors_origins.split(",")[0].strip()
+    monkeypatch.setattr(
+        rate_limit,
+        "get_settings",
+        lambda: SimpleNamespace(rate_limit_enabled=True),
+    )
+    main.app.state.rate_limit_redis = RateLimitedRedis()
+
+    response = TestClient(main.app).post(
+        "/api/auth/register",
+        headers={"Origin": origin},
+        json={},
+    )
+
+    assert response.status_code == 429
+    assert response.headers.get("access-control-allow-origin") == origin
+    assert response.headers.get("access-control-allow-credentials") == "true"
