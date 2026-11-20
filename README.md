@@ -62,7 +62,7 @@ flowchart TD
 ## 🚀 Quick Start (Local Development)
 
 ### 1. Prerequisites
-- **Node.js**: v20 or higher
+- **Node.js**: v22 or higher
 - **Python**: v3.11 or higher
 - **Package Managers**: `npm` and `pip`
 
