@@ -27,6 +27,7 @@ def test_refresh_token_rotation_detects_reuse_and_revokes_family(monkeypatch):
         new_csrf=rotated.json()["csrf_token"]
         assert new_refresh and new_refresh!=old_refresh
 
+        client.cookies.clear()
         client.cookies.set("academic_refresh",old_refresh,path="/api/auth")
         client.cookies.set("academic_csrf",old_csrf,path="/api/auth")
         replay=client.post(
@@ -36,6 +37,7 @@ def test_refresh_token_rotation_detects_reuse_and_revokes_family(monkeypatch):
         assert replay.status_code==401
         assert replay.json()["detail"]["code"]=="REFRESH_TOKEN_REUSE"
 
+        client.cookies.clear()
         client.cookies.set("academic_refresh",new_refresh,path="/api/auth")
         client.cookies.set("academic_csrf",new_csrf,path="/api/auth")
         revoked=client.post("/api/auth/refresh",headers={"X-CSRF-Token":new_csrf})
